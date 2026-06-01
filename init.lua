@@ -99,7 +99,7 @@ do
   vim.g.maplocalleader = ' '
 
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- [[ Setting options ]]
   --  See `:help vim.o`
@@ -110,7 +110,7 @@ do
   vim.o.number = true
   -- You can also add relative line numbers, to help with jumping.
   --  Experiment for yourself to see if you like it!
-  -- vim.o.relativenumber = true
+  vim.o.relativenumber = true
 
   -- Enable mouse mode, can be useful for resizing splits for example!
   vim.o.mouse = 'a'
@@ -165,7 +165,7 @@ do
   vim.o.cursorline = true
 
   -- Minimal number of screen lines to keep above and below the cursor.
-  vim.o.scrolloff = 10
+  vim.o.scrolloff = 20
 
   -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
   -- instead raise a dialog asking if you wish to save the current file(s)
@@ -205,6 +205,10 @@ do
 
   vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
+  -- Close buffer without saving
+  vim.keymap.set('n', '<leader>bd', '<cmd>bdelete!<CR>', { desc = '[B]uffer [D]elete (no save)' })
+  vim.keymap.set('n', '<leader>bD', '<cmd>bwipeout!<CR>', { desc = '[B]uffer wipe[o]ut (no save)' })
+
   -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
   -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
   -- is not what someone will guess without a bit more experience.
@@ -227,6 +231,31 @@ do
   vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
   vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
   vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+
+  -- Copy file paths to system clipboard
+  vim.keymap.set('n', '<leader>yf', function()
+    vim.fn.setreg('+', vim.fn.expand '%:p')
+    print('Copied full path: ' .. vim.fn.expand '%:p')
+  end, { desc = '[Y]ank [F]ull file path' })
+
+  vim.keymap.set('n', '<leader>yr', function()
+    vim.fn.setreg('+', vim.fn.expand '%')
+    print('Copied relative path: ' .. vim.fn.expand '%')
+  end, { desc = '[Y]ank [R]elative file path' })
+
+  vim.keymap.set('n', '<leader>yd', function()
+    vim.fn.setreg('+', vim.fn.expand '%:p:h')
+    print('Copied directory: ' .. vim.fn.expand '%:p:h')
+  end, { desc = '[Y]ank [D]irectory path' })
+
+  -- Mini.files keymaps
+  vim.keymap.set('n', '<leader>e', function()
+    MiniFiles.open(vim.api.nvim_buf_get_name(0))
+  end, { desc = 'Open file [E]xplorer at current file' })
+
+  vim.keymap.set('n', '<leader>E', function()
+    MiniFiles.open()
+  end, { desc = 'Open file [E]xplorer at cwd' })
 
   -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
   -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
@@ -371,6 +400,7 @@ do
     -- Document existing key chains
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
+      { '<leader>b', group = '[B]uffer' },
       { '<leader>t', group = '[T]oggle' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
@@ -383,18 +413,12 @@ do
   -- change the command under that to load whatever the name of that colorscheme is.
   --
   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-  vim.pack.add { gh 'folke/tokyonight.nvim' }
-  ---@diagnostic disable-next-line: missing-fields
-  require('tokyonight').setup {
-    styles = {
-      comments = { italic = false }, -- Disable italics in comments
-    },
-  }
+  vim.pack.add { gh 'scottmckendry/cyberdream.nvim' }
 
   -- Load the colorscheme here.
   -- Like many other themes, this one has different styles, and you could load
-  -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-  vim.cmd.colorscheme 'tokyonight-night'
+  -- any other.
+  vim.cmd.colorscheme 'cyberdream'
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
@@ -441,6 +465,17 @@ do
 
   -- ... and there is more!
   --  Check out: https://github.com/nvim-mini/mini.nvim
+
+  -- Mini.files: floating/split file browser (lightweight alternative to neo-tree)
+  require('mini.files').setup {
+    mappings = {
+      mark_set = 'M',
+    },
+    windows = {
+      preview = true,
+      width_preview = 40,
+    },
+  }
 end
 
 -- ============================================================
@@ -516,6 +551,26 @@ do
   vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
   vim.keymap.set('n', '<leader>sc', builtin.commands, { desc = '[S]earch [C]ommands' })
   vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+
+  -- Search files in the directory of the current file (not the project root)
+  vim.keymap.set('n', '<leader>sF', function()
+    builtin.find_files { cwd = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ':p:h') }
+  end, { desc = '[S]earch [F]iles (current file dir)' })
+
+  -- Search files in home directory
+  vim.keymap.set('n', '<leader>s~', function()
+    builtin.find_files { cwd = '~' }
+  end, { desc = '[S]earch [~] home directory' })
+
+  -- Search Neovim config files
+  vim.keymap.set('n', '<leader>sn', function()
+    builtin.find_files { cwd = vim.fn.stdpath 'config' }
+  end, { desc = '[S]earch [N]eovim config' })
+
+  -- Grep in the directory of the current file
+  vim.keymap.set('n', '<leader>sG', function()
+    builtin.live_grep { cwd = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ':p:h') }
+  end, { desc = '[S]earch by [G]rep (current file dir)' })
 
   -- Add Telescope-based LSP pickers when an LSP attaches to a buffer.
   -- If you later switch picker plugins, this is where to update these mappings.
@@ -964,7 +1019,7 @@ do
   -- require 'kickstart.plugins.indent_line'
   -- require 'kickstart.plugins.lint'
   -- require 'kickstart.plugins.autopairs'
-  -- require 'kickstart.plugins.neo-tree'
+  require 'kickstart.plugins.neo-tree'
   -- require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
 
   -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
