@@ -250,7 +250,11 @@ do
 
   -- Mini.files keymaps
   vim.keymap.set('n', '<leader>e', function()
-    MiniFiles.open(vim.api.nvim_buf_get_name(0))
+    local path = vim.api.nvim_buf_get_name(0)
+    if path == '' or vim.fn.filereadable(path) == 0 then
+      path = vim.fn.getcwd()
+    end
+    MiniFiles.open(path)
   end, { desc = 'Open file [E]xplorer at current file' })
 
   vim.keymap.set('n', '<leader>E', function()
